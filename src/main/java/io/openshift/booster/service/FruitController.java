@@ -19,6 +19,7 @@ package io.openshift.booster.service;
 import io.openshift.booster.exception.NotFoundException;
 import io.openshift.booster.exception.UnprocessableEntityException;
 import io.openshift.booster.exception.UnsupportedMediaTypeException;
+import io.swagger.annotations.ApiOperation;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -53,6 +54,7 @@ public class FruitController {
         return repository.findOne(id);
     }
 
+    @ApiOperation("Get All Fruits")
     @GetMapping
     public List<Fruit> getAll() {
         Spliterator<Fruit> fruits = repository.findAll()
@@ -63,6 +65,7 @@ public class FruitController {
                 .collect(Collectors.toList());
     }
 
+    @ApiOperation("Create a fruit")
     @ResponseStatus(HttpStatus.CREATED)
     @PostMapping
     public Fruit post(@RequestBody(required = false) Fruit fruit) {
@@ -71,6 +74,7 @@ public class FruitController {
         return repository.save(fruit);
     }
 
+    @ApiOperation("Update a fruit")
     @ResponseStatus(HttpStatus.OK)
     @PutMapping("/{id}")
     public Fruit put(@PathVariable("id") Integer id, @RequestBody(required = false) Fruit fruit) {
@@ -81,6 +85,7 @@ public class FruitController {
         return repository.save(fruit);
     }
 
+    @ApiOperation("Delete a fruit")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @DeleteMapping("/{id}")
     public void delete(@PathVariable("id") Integer id) {

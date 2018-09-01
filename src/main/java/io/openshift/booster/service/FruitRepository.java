@@ -17,6 +17,8 @@
 package io.openshift.booster.service;
 
 import org.springframework.data.repository.CrudRepository;
+import springfox.documentation.annotations.ApiIgnore;
 
+@ApiIgnore
 public interface FruitRepository extends CrudRepository<Fruit, Integer> {
 }
