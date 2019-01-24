@@ -25,86 +25,129 @@
       var app = angular.module("FruitManagement", []);
 
       //Controller Part
-      app.controller("FruitManagementController", function ($scope, $http) {
-
-        //Initialize page with default data which is blank in this example
-        $scope.fruits = [];
-
-        $scope.form = {
+      app.controller("FruitManagementController", function ($scope, $http, $timeout) {
+        // Default values for the form.
+        var DEFAULT_FORM_VALUES = {
           id: -1,
-          name: ""
+          name: ''
         };
+        var DEFAULT_POLLING_MS = 2000;
 
-        //Now load the data from server
-        _refreshPageData();
+        // Initialize page with default data which is blank in this example
+        $scope.fruitList = [];
 
-        //HTTP POST/PUT methods for add/edit fruits
+        $scope.form = DEFAULT_FORM_VALUES;
+
+        // Begin polling data from the server.
+        (function _pollPageData() {
+          _refreshPageData().then(function() {
+            $timeout(_pollPageData, DEFAULT_POLLING_MS);
+          });
+        })();
+
+        /* UI operations */
+
+        // Handle the creating and updating of a fruit.
         $scope.update = function () {
-          var method = "";
-          var url = "";
-          var data = {};
+          // If there is no id then we are creating a fruit.
           if ($scope.form.id == -1) {
-            //Id is absent so add fruits - POST operation
-            method = "POST";
-            url = '/api/fruits';
-            data.name = $scope.form.name;
-          } else {
-            //If Id is present, it's edit operation - PUT operation
-            method = "PUT";
-            url = '/api/fruits/' + $scope.form.id;
-            data.name = $scope.form.name;
+            _createFruit($scope.form.name).then(function(fruit) {
+              if (!fruit) {
+                return;
+              }
+              _refreshPageData();
+              _resetForm();
+            });
+            return;
           }
-
-          $http({
-            method: method,
-            url: url,
-            data: angular.toJson(data),
-            headers: {
-              'Content-Type': 'application/json'
+          _updateFruit($scope.form.id, $scope.form.name).then(function(fruit) {
+            if (!fruit) {
+              return;
             }
-          }).then(_success, _error);
+            _refreshPageData();
+            _resetForm();
+          });
         };
 
-        //HTTP DELETE- delete fruit by id
+        // Delete a fruit and refresh.
         $scope.remove = function (fruit) {
-          $http({
-            method: 'DELETE',
-            url: '/api/fruits/' + fruit.id
-          }).then(_success, _error);
+          _deleteFruit(fruit.id).then(_refreshPageData);
         };
 
-        //In case of edit fruits, populate form with fruit data
+        // Update the current form context to reference the provided fruit.
         $scope.edit = function (fruit) {
-          $scope.form.name = fruit.name;
-          $scope.form.id = fruit.id;
+          $scope.form = {
+            id: fruit.id,
+            name: fruit.name
+          };
         };
 
-          /* Private Methods */
-        //HTTP GET- get all fruits collection
+        // Reset the form to use default values.
+        function _resetForm() {
+          $scope.form = DEFAULT_FORM_VALUES;
+        }
+
+        // Retrieve all fruit and update the local fruit collection.
         function _refreshPageData() {
-          $http({
-            method: 'GET',
-            url: '/api/fruits'
-          }).then(function successCallback(response) {
-            $scope.fruits = response.data;
-          }, function errorCallback(response) {
-            console.log(response.statusText);
+          return _listFruit().then(function(fruitList) {
+            if (!fruitList) {
+              return;
+            }
+            $scope.fruitList = fruitList;
           });
         }
 
-        function _success(response) {
-          _refreshPageData();
-          _clearForm()
+        /* API operations */
+
+        // Add a new fruit with a specified name to the collection.
+        function _createFruit(name) {
+          return $http({
+            method: 'POST',
+            url: '/api/fruits',
+            data: {
+              name: name
+            }
+          }).then(_handleSuccessResponse, _handleFailureResponse.bind(null, 'Failed to create fruit'));
+        }
+        
+        // Update an existing fruit in the collection.
+        function _updateFruit(id, name) {
+          return $http({
+            method: 'PUT',
+            url: '/api/fruits/' + id,
+            data: {
+              name: name
+            }
+          }).then(_handleSuccessResponse, _handleFailureResponse.bind(null, 'Failed to update fruit'));
         }
 
-        function _error(response) {
-          alert(response.data.message || response.statusText);
+        // Remove a fruit from the collection by id.
+        function _deleteFruit(id) {
+          return $http({
+            method: 'DELETE',
+            url: '/api/fruits/' + id
+          }).then(_handleSuccessResponse, _handleFailureResponse.bind(null, 'Failed to delete fruit'));
         }
 
-        //Clear the form
-        function _clearForm() {
-          $scope.form.name = "";
-          $scope.form.id = -1;
+        // List all fruit in the collection.
+        function _listFruit() {
+          return $http({
+            method: 'GET',
+            url: '/api/fruits'
+          }).then(_handleSuccessResponse, _handleFailureResponse.bind(null, 'Failed to list fruit'));
+        }
+
+        // Default request success handler. Extracts the item data from the
+        // response provided.
+        function _handleSuccessResponse(resp) {
+          return resp.data;
+        }
+
+        // Default request error handler.
+        function _handleFailureResponse(msgPrefix, errResp) {
+          var errorMsg = msgPrefix + ': ' + (errResp.data.message || errResp.statusText);
+          console.error(errorMsg);
+          alert(errorMsg);
         }
       });
     </script>
@@ -130,7 +173,7 @@
     <div class="row">
         <div class="col-2">Name</div>
     </div>
-    <div class="row" ng-repeat="fruit in fruits">
+    <div class="row" ng-repeat="fruit in fruitList">
         <div class="col-2">{{ fruit.name }}</div>
         <div class="col-8"><a ng-click="edit( fruit )" class="btn">Edit</a> <a ng-click="remove( fruit )" class="btn">Remove</a>
         </div>
